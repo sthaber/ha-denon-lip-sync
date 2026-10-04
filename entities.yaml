@@ -1,0 +1,195 @@
+# Denon lip sync — Home Assistant package.
+#
+# Sets the receiver's audio delay for one input based on the frame rate and
+# HDR type of the video coming into it. Each combination gets its own delay
+# setting, editable from the dashboard while the matching video plays.
+#
+# Install: see https://github.com/sthaber/ha-denon-lip-sync
+#
+# Two things you may want to edit, both in the automation's `variables:`
+# below:
+#   1. `watched_input` — the receiver's internal name for the input your
+#      source is plugged into (AUX1, MPLAY, GAME, BD, SAT/CBL, ...). This is
+#      not the name you gave it; read `input` off sensor.denon_lip_sync_format
+#      while the source is selected.
+#   2. `receiver` — your Denon's media_player entity from the denonavr
+#      integration.
+
+command_line:
+  - sensor:
+      name: Denon Lip Sync Format
+      unique_id: denon_lip_sync_format
+      command: 'python3 /config/ha-denon-lip-sync/denon.py'
+      command_timeout: 3
+      scan_interval: 3
+      value_template: "{{ value_json.format | default('unknown') }}"
+      json_attributes:
+        - input
+        - resolution
+        - frame_rate
+        - hdr
+        - delay
+        - error
+
+# One delay per frame rate and HDR type, plus a default for anything else
+# (25 Hz, HLG, ...). Values live in HA's saved state, not in this file, so
+# your tuning survives restarts and updates to this package.
+input_number:
+  lip_sync_24_sdr:
+    name: Lip Sync 24 Hz SDR
+    icon: mdi:timer-music-outline
+    min: 0
+    max: 500
+    step: 1
+    unit_of_measurement: ms
+    mode: box
+  lip_sync_24_hdr10:
+    name: Lip Sync 24 Hz HDR10
+    icon: mdi:timer-music-outline
+    min: 0
+    max: 500
+    step: 1
+    unit_of_measurement: ms
+    mode: box
+  lip_sync_24_dolby_vision:
+    name: Lip Sync 24 Hz Dolby Vision
+    icon: mdi:timer-music-outline
+    min: 0
+    max: 500
+    step: 1
+    unit_of_measurement: ms
+    mode: box
+  lip_sync_30_sdr:
+    name: Lip Sync 30 Hz SDR
+    icon: mdi:timer-music-outline
+    min: 0
+    max: 500
+    step: 1
+    unit_of_measurement: ms
+    mode: box
+  lip_sync_30_hdr10:
+    name: Lip Sync 30 Hz HDR10
+    icon: mdi:timer-music-outline
+    min: 0
+    max: 500
+    step: 1
+    unit_of_measurement: ms
+    mode: box
+  lip_sync_30_dolby_vision:
+    name: Lip Sync 30 Hz Dolby Vision
+    icon: mdi:timer-music-outline
+    min: 0
+    max: 500
+    step: 1
+    unit_of_measurement: ms
+    mode: box
+  lip_sync_50_sdr:
+    name: Lip Sync 50 Hz SDR
+    icon: mdi:timer-music-outline
+    min: 0
+    max: 500
+    step: 1
+    unit_of_measurement: ms
+    mode: box
+  lip_sync_50_hdr10:
+    name: Lip Sync 50 Hz HDR10
+    icon: mdi:timer-music-outline
+    min: 0
+    max: 500
+    step: 1
+    unit_of_measurement: ms
+    mode: box
+  lip_sync_50_dolby_vision:
+    name: Lip Sync 50 Hz Dolby Vision
+    icon: mdi:timer-music-outline
+    min: 0
+    max: 500
+    step: 1
+    unit_of_measurement: ms
+    mode: box
+  lip_sync_60_sdr:
+    name: Lip Sync 60 Hz SDR
+    icon: mdi:timer-music-outline
+    min: 0
+    max: 500
+    step: 1
+    unit_of_measurement: ms
+    mode: box
+  lip_sync_60_hdr10:
+    name: Lip Sync 60 Hz HDR10
+    icon: mdi:timer-music-outline
+    min: 0
+    max: 500
+    step: 1
+    unit_of_measurement: ms
+    mode: box
+  lip_sync_60_dolby_vision:
+    name: Lip Sync 60 Hz Dolby Vision
+    icon: mdi:timer-music-outline
+    min: 0
+    max: 500
+    step: 1
+    unit_of_measurement: ms
+    mode: box
+  lip_sync_default:
+    name: Lip Sync Default
+    icon: mdi:timer-music-outline
+    min: 0
+    max: 500
+    step: 1
+    unit_of_measurement: ms
+    mode: box
+
+automation:
+  - id: denon_lip_sync_apply
+    alias: Denon lip sync - apply delay for current video format
+    description: >-
+      Sets the receiver's audio delay from the matching Lip Sync setting
+      whenever the video format, the selected input, or a setting changes.
+    mode: queued
+    max: 3
+    triggers:
+      - trigger: state
+        entity_id: sensor.denon_lip_sync_format
+      - trigger: state
+        entity_id: sensor.denon_lip_sync_format
+        attribute: input
+      - trigger: state
+        entity_id:
+          - input_number.lip_sync_24_sdr
+          - input_number.lip_sync_24_hdr10
+          - input_number.lip_sync_24_dolby_vision
+          - input_number.lip_sync_30_sdr
+          - input_number.lip_sync_30_hdr10
+          - input_number.lip_sync_30_dolby_vision
+          - input_number.lip_sync_50_sdr
+          - input_number.lip_sync_50_hdr10
+          - input_number.lip_sync_50_dolby_vision
+          - input_number.lip_sync_60_sdr
+          - input_number.lip_sync_60_hdr10
+          - input_number.lip_sync_60_dolby_vision
+          - input_number.lip_sync_default
+    variables:
+      watched_input: AUX1
+      receiver: media_player.denon_avr_x1700h_2
+      video_format: "{{ states('sensor.denon_lip_sync_format') }}"
+      setting: "input_number.lip_sync_{{ video_format }}"
+      target: >-
+        {{ (states(setting) if has_value(setting)
+            else states('input_number.lip_sync_default')) | int }}
+      current: "{{ state_attr('sensor.denon_lip_sync_format', 'delay') }}"
+    conditions:
+      # The delay command changes whichever input is selected, so only act
+      # while the watched one is.
+      - "{{ state_attr('sensor.denon_lip_sync_format', 'input') == watched_input }}"
+      - "{{ video_format not in ['none', 'unknown', 'unavailable'] }}"
+      - "{{ current is number and target != current }}"
+    actions:
+      - action: denonavr.get_command
+        target:
+          entity_id: "{{ receiver }}"
+        data:
+          command: "/goform/formiPhoneAppDirect.xml?PSDELAY%20{{ '%03d' % target }}"
+      - action: homeassistant.update_entity
+        target:
+          entity_id: sensor.denon_lip_sync_format

@@ -1,0 +1,150 @@
+# Dashboard for the entities created by entities.yaml.
+#
+# Used in two ways:
+# 1. As a YAML-mode dashboard, registered via `lovelace:` in
+#    configuration.yaml (see the project README for the snippet).
+# 2. As a snippet to paste — extract the contents of `views[0]` and
+#    paste it into a dashboard view's raw YAML editor.
+#
+# To tune: play a test clip in the format you want to set, then adjust that
+# format's delay here. The setting for whatever is playing now is shown at
+# the top, and changes reach the receiver within a few seconds.
+
+views:
+  - type: sections
+    title: Lip Sync
+    icon: mdi:timer-music-outline
+    max_columns: 4
+    sections:
+      - type: grid
+        cards:
+          - type: heading
+            heading: Now playing
+          - type: markdown
+            content: >-
+              {% set s = 'sensor.denon_lip_sync_format' %}
+              {% set f = states(s) %}
+              {% if state_attr(s, 'error') %}
+              Can't reach the receiver: {{ state_attr(s, 'error') }}
+              {% elif f in ['none', 'unknown', 'unavailable'] %}
+              No video on input {{ state_attr(s, 'input') or 'unknown' }}.
+              {% else %}
+              {% set setting = 'input_number.lip_sync_' ~ f %}
+              **{{ state_attr(s, 'resolution') }} {{ state_attr(s, 'frame_rate') }} Hz
+              {{ {'sdr': 'SDR', 'hdr10': 'HDR10', 'dolby_vision': 'Dolby Vision'}.get(state_attr(s, 'hdr'), state_attr(s, 'hdr')) }}**
+              on input {{ state_attr(s, 'input') }}
+
+              Receiver delay: **{{ state_attr(s, 'delay') }} ms**, from
+              {{ state_attr(setting, 'friendly_name') if has_value(setting) else 'Lip Sync Default' }}
+              {% endif %}
+          - type: tile
+            entity: input_number.lip_sync_default
+            name: Default (any other format)
+            features_position: bottom
+            features:
+              - type: numeric-input
+                style: buttons
+      - type: grid
+        cards:
+          - type: heading
+            heading: 24 Hz
+            heading_style: subtitle
+          - type: tile
+            entity: input_number.lip_sync_24_sdr
+            name: SDR
+            features_position: bottom
+            features:
+              - type: numeric-input
+                style: buttons
+          - type: tile
+            entity: input_number.lip_sync_24_hdr10
+            name: HDR10
+            features_position: bottom
+            features:
+              - type: numeric-input
+                style: buttons
+          - type: tile
+            entity: input_number.lip_sync_24_dolby_vision
+            name: Dolby Vision
+            features_position: bottom
+            features:
+              - type: numeric-input
+                style: buttons
+      - type: grid
+        cards:
+          - type: heading
+            heading: 30 Hz
+            heading_style: subtitle
+          - type: tile
+            entity: input_number.lip_sync_30_sdr
+            name: SDR
+            features_position: bottom
+            features:
+              - type: numeric-input
+                style: buttons
+          - type: tile
+            entity: input_number.lip_sync_30_hdr10
+            name: HDR10
+            features_position: bottom
+            features:
+              - type: numeric-input
+                style: buttons
+          - type: tile
+            entity: input_number.lip_sync_30_dolby_vision
+            name: Dolby Vision
+            features_position: bottom
+            features:
+              - type: numeric-input
+                style: buttons
+      - type: grid
+        cards:
+          - type: heading
+            heading: 50 Hz
+            heading_style: subtitle
+          - type: tile
+            entity: input_number.lip_sync_50_sdr
+            name: SDR
+            features_position: bottom
+            features:
+              - type: numeric-input
+                style: buttons
+          - type: tile
+            entity: input_number.lip_sync_50_hdr10
+            name: HDR10
+            features_position: bottom
+            features:
+              - type: numeric-input
+                style: buttons
+          - type: tile
+            entity: input_number.lip_sync_50_dolby_vision
+            name: Dolby Vision
+            features_position: bottom
+            features:
+              - type: numeric-input
+                style: buttons
+      - type: grid
+        cards:
+          - type: heading
+            heading: 60 Hz
+            heading_style: subtitle
+          - type: tile
+            entity: input_number.lip_sync_60_sdr
+            name: SDR
+            features_position: bottom
+            features:
+              - type: numeric-input
+                style: buttons
+          - type: tile
+            entity: input_number.lip_sync_60_hdr10
+            name: HDR10
+            features_position: bottom
+            features:
+              - type: numeric-input
+                style: buttons
+          - type: tile
+            entity: input_number.lip_sync_60_dolby_vision
+            name: Dolby Vision
+            features_position: bottom
+            features:
+              - type: numeric-input
+                style: buttons
