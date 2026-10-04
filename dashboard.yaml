@@ -57,19 +57,6 @@ views:
       - type: grid
         cards:
           - type: heading
-            heading: 30 Hz
-            heading_style: subtitle
-          - type: entities
-            entities:
-              - entity: input_number.lip_sync_30_sdr
-                name: SDR
-              - entity: input_number.lip_sync_30_hdr10
-                name: HDR10
-              - entity: input_number.lip_sync_30_dolby_vision
-                name: Dolby Vision
-      - type: grid
-        cards:
-          - type: heading
             heading: 50 Hz
             heading_style: subtitle
           - type: entities

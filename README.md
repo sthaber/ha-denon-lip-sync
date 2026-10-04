@@ -16,10 +16,13 @@ Tested on a Denon AVR-X1700H with an Apple TV on AUX1, into an LG C5.
 - `sensor.denon_lip_sync_format`: what's coming into the receiver, e.g.
   `24_hdr10`. Attributes: `input`, `resolution`, `frame_rate`, `hdr`,
   `delay` (the receiver's current audio delay in ms), and `error`.
-- One delay setting for each combination of 24, 30, 50 and 60 Hz with SDR,
-  HDR10 and Dolby Vision, e.g. `input_number.lip_sync_24_hdr10`. Twelve in all.
-- `input_number.lip_sync_default`: used for anything else, such as 25 Hz or
-  HLG.
+- One delay setting for each combination of 24, 50 and 60 Hz with SDR,
+  HDR10 and Dolby Vision, e.g. `input_number.lip_sync_24_hdr10`. Nine in all.
+- `input_number.lip_sync_default`: used for anything else, such as HLG.
+
+There's no 25 or 30 Hz row because an Apple TV never sends them: it plays
+25 fps video at 50 Hz and 30 fps at 60 Hz. If your source does send 25 or
+30 Hz, those use the default, or you can add rows the same way.
 - An automation that sends the matching delay to the receiver whenever the
   format changes, you switch back to the watched input, or you edit a delay.
 - A dashboard for tuning.

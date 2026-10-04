@@ -32,7 +32,8 @@ command_line:
         - error
 
 # One delay per frame rate and HDR type, plus a default for anything else
-# (25 Hz, HLG, ...). Values live in HA's saved state, not in this file, so
+# (25 or 30 Hz from sources that send them, HLG, ...). An Apple TV sends
+# 25 fps video at 50 Hz and 30 fps at 60 Hz, so those are covered. Values live in HA's saved state, not in this file, so
 # your tuning survives restarts and updates to this package.
 input_number:
   lip_sync_24_sdr:
@@ -53,30 +54,6 @@ input_number:
     mode: box
   lip_sync_24_dolby_vision:
     name: Lip Sync 24 Hz Dolby Vision
-    icon: mdi:timer-music-outline
-    min: 0
-    max: 500
-    step: 1
-    unit_of_measurement: ms
-    mode: box
-  lip_sync_30_sdr:
-    name: Lip Sync 30 Hz SDR
-    icon: mdi:timer-music-outline
-    min: 0
-    max: 500
-    step: 1
-    unit_of_measurement: ms
-    mode: box
-  lip_sync_30_hdr10:
-    name: Lip Sync 30 Hz HDR10
-    icon: mdi:timer-music-outline
-    min: 0
-    max: 500
-    step: 1
-    unit_of_measurement: ms
-    mode: box
-  lip_sync_30_dolby_vision:
-    name: Lip Sync 30 Hz Dolby Vision
     icon: mdi:timer-music-outline
     min: 0
     max: 500
@@ -159,9 +136,6 @@ automation:
           - input_number.lip_sync_24_sdr
           - input_number.lip_sync_24_hdr10
           - input_number.lip_sync_24_dolby_vision
-          - input_number.lip_sync_30_sdr
-          - input_number.lip_sync_30_hdr10
-          - input_number.lip_sync_30_dolby_vision
           - input_number.lip_sync_50_sdr
           - input_number.lip_sync_50_hdr10
           - input_number.lip_sync_50_dolby_vision
