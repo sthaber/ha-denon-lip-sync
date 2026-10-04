@@ -37,114 +37,59 @@ views:
               Receiver delay: **{{ state_attr(s, 'delay') }} ms**, from
               {{ state_attr(setting, 'friendly_name') if has_value(setting) else 'Lip Sync Default' }}
               {% endif %}
-          - type: tile
-            entity: input_number.lip_sync_default
-            name: Default (any other format)
-            features_position: bottom
-            features:
-              - type: numeric-input
-                style: buttons
+          - type: entities
+            entities:
+              - entity: input_number.lip_sync_default
+                name: Default (any other format)
       - type: grid
         cards:
           - type: heading
             heading: 24 Hz
             heading_style: subtitle
-          - type: tile
-            entity: input_number.lip_sync_24_sdr
-            name: SDR
-            features_position: bottom
-            features:
-              - type: numeric-input
-                style: buttons
-          - type: tile
-            entity: input_number.lip_sync_24_hdr10
-            name: HDR10
-            features_position: bottom
-            features:
-              - type: numeric-input
-                style: buttons
-          - type: tile
-            entity: input_number.lip_sync_24_dolby_vision
-            name: Dolby Vision
-            features_position: bottom
-            features:
-              - type: numeric-input
-                style: buttons
+          - type: entities
+            entities:
+              - entity: input_number.lip_sync_24_sdr
+                name: SDR
+              - entity: input_number.lip_sync_24_hdr10
+                name: HDR10
+              - entity: input_number.lip_sync_24_dolby_vision
+                name: Dolby Vision
       - type: grid
         cards:
           - type: heading
             heading: 30 Hz
             heading_style: subtitle
-          - type: tile
-            entity: input_number.lip_sync_30_sdr
-            name: SDR
-            features_position: bottom
-            features:
-              - type: numeric-input
-                style: buttons
-          - type: tile
-            entity: input_number.lip_sync_30_hdr10
-            name: HDR10
-            features_position: bottom
-            features:
-              - type: numeric-input
-                style: buttons
-          - type: tile
-            entity: input_number.lip_sync_30_dolby_vision
-            name: Dolby Vision
-            features_position: bottom
-            features:
-              - type: numeric-input
-                style: buttons
+          - type: entities
+            entities:
+              - entity: input_number.lip_sync_30_sdr
+                name: SDR
+              - entity: input_number.lip_sync_30_hdr10
+                name: HDR10
+              - entity: input_number.lip_sync_30_dolby_vision
+                name: Dolby Vision
       - type: grid
         cards:
           - type: heading
             heading: 50 Hz
             heading_style: subtitle
-          - type: tile
-            entity: input_number.lip_sync_50_sdr
-            name: SDR
-            features_position: bottom
-            features:
-              - type: numeric-input
-                style: buttons
-          - type: tile
-            entity: input_number.lip_sync_50_hdr10
-            name: HDR10
-            features_position: bottom
-            features:
-              - type: numeric-input
-                style: buttons
-          - type: tile
-            entity: input_number.lip_sync_50_dolby_vision
-            name: Dolby Vision
-            features_position: bottom
-            features:
-              - type: numeric-input
-                style: buttons
+          - type: entities
+            entities:
+              - entity: input_number.lip_sync_50_sdr
+                name: SDR
+              - entity: input_number.lip_sync_50_hdr10
+                name: HDR10
+              - entity: input_number.lip_sync_50_dolby_vision
+                name: Dolby Vision
       - type: grid
         cards:
           - type: heading
             heading: 60 Hz
             heading_style: subtitle
-          - type: tile
-            entity: input_number.lip_sync_60_sdr
-            name: SDR
-            features_position: bottom
-            features:
-              - type: numeric-input
-                style: buttons
-          - type: tile
-            entity: input_number.lip_sync_60_hdr10
-            name: HDR10
-            features_position: bottom
-            features:
-              - type: numeric-input
-                style: buttons
-          - type: tile
-            entity: input_number.lip_sync_60_dolby_vision
-            name: Dolby Vision
-            features_position: bottom
-            features:
-              - type: numeric-input
-                style: buttons
+          - type: entities
+            entities:
+              - entity: input_number.lip_sync_60_sdr
+                name: SDR
+              - entity: input_number.lip_sync_60_hdr10
+                name: HDR10
+              - entity: input_number.lip_sync_60_dolby_vision
+                name: Dolby Vision
