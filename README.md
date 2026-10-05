@@ -26,7 +26,10 @@ There's no 25 or 30 Hz row because an Apple TV never sends them: it plays
 - An automation that keeps the selected input's delay where it should be:
   the matching setting on the input your source is plugged into, and 0 ms
   on every other input.
-- A dashboard for tuning.
+- `input_boolean.lip_sync_enabled`: turns the automation off, so you can
+  set a delay by hand with the receiver's remote for content that's out of
+  sync at the source. Turning it back on restores the tuned delay.
+- A dashboard for tuning, with the on/off switch at the top.
 
 ## Requirements
 
@@ -69,7 +72,8 @@ lovelace:
       require_admin: false
 ```
 
-Restart HA.
+Restart HA, then turn on **Automatic lip sync** at the top of the
+dashboard. It starts off on a new install.
 
 ## Configuration
 
@@ -112,6 +116,10 @@ the package don't touch them. They're included in HA backups.
   input is selected and sends the delay over the same connection a moment
   later, and does nothing if the input has changed. The next poll sees the
   new input and the automation decides again.
+- The receiver silently ignores delay changes while no video is coming in.
+  `denon.py set` only counts a change as made when the receiver repeats
+  the exact value back, and the automation re-checks every 10 s, so a
+  change that didn't take is retried.
 
 ### What the receiver reports
 
@@ -138,10 +146,13 @@ to 4K reports 4K even for 1080p video.
   wrong value ever lands on another input, for example because you switched
   inputs at the exact moment a delay was sent, it's put back to 0 within a
   few seconds.
-- **Delay changes from the receiver's remote don't stick.** The
-  automation puts it back within a few seconds. Tune from the dashboard.
-- **With no video on the watched input**, such as when the source is
-  asleep, its delay is left alone.
+- **Delay changes from the receiver's remote don't stick** while automatic
+  lip sync is on; the automation puts the tuned value back within a few
+  seconds. Turn it off to set a delay by hand.
+- **Nothing changes while there's no video.** The receiver ignores delay
+  changes on any input with no video coming in, such as when the source is
+  asleep, so the automation waits. It checks every 10 s and applies the
+  delay once video arrives.
 - **The receiver allows 0 to 500 ms**, so the settings do too.
 - **The receiver may show its delay on screen** when it changes, as it
   does for any audio delay change.

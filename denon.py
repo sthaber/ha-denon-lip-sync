@@ -20,6 +20,11 @@ sends the delay over the same connection a moment later, and does nothing
 if the input has changed since HA decided what to send. HA will see the
 new input on its next poll and decide again.
 
+The receiver also ignores delay changes while no video is coming in, and
+doesn't reply to them. `set` only counts the change as made when the
+receiver repeats back the exact value; replies to HA's own polls go to
+every connection and can't be mistaken for it.
+
 The receiver's address comes from the denonavr config entry in HA storage,
 so nothing here needs editing.
 
@@ -127,7 +132,12 @@ def set_delay(expected_input: str, delay: int) -> str:
         selected = receiver.ask(["SI?"], ["SI"])["SI"]
         if selected != expected_input:
             return f"skipped: input is {selected}, not {expected_input}"
-        receiver.ask([f"PSDELAY {delay:03d}"], ["PSDELAY "])
+        try:
+            receiver.ask([f"PSDELAY {delay:03d}"], [f"PSDELAY {delay:03d}"])
+        except TimeoutError:
+            # Not an error: it happens whenever there's no video. HA's next
+            # check retries.
+            return f"not taken: receiver ignored {delay} ms on {expected_input}"
         return f"set {expected_input} to {delay} ms"
     finally:
         receiver.close()

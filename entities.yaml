@@ -12,6 +12,10 @@
 # the input and read `input` off sensor.denon_lip_sync_format.
 #
 # Every other input is held at 0 ms.
+#
+# input_boolean.lip_sync_enabled turns all of this off, for setting a delay
+# by hand on content that's out of sync at the source. It starts off on a
+# new install; turn it on from the dashboard.
 
 # Writes go through denon.py rather than the denonavr integration, so the
 # script can check which input is selected immediately before sending.
@@ -39,6 +43,11 @@ command_line:
 # (25 or 30 Hz from sources that send them, HLG, ...). An Apple TV sends
 # 25 fps video at 50 Hz and 30 fps at 60 Hz, so those are covered. Values live in HA's saved state, not in this file, so
 # your tuning survives restarts and updates to this package.
+input_boolean:
+  lip_sync_enabled:
+    name: Lip Sync Enabled
+    icon: mdi:timer-music-outline
+
 input_number:
   lip_sync_24_sdr:
     name: Lip Sync 24 Hz SDR
@@ -139,6 +148,13 @@ automation:
         entity_id: sensor.denon_lip_sync_format
         attribute: delay
       - trigger: state
+        entity_id: input_boolean.lip_sync_enabled
+        to: "on"
+      # Retry: the receiver ignores delay changes while there's no video,
+      # and a change it ignored won't cause another state change.
+      - trigger: time_pattern
+        seconds: "/10"
+      - trigger: state
         entity_id:
           - input_number.lip_sync_24_sdr
           - input_number.lip_sync_24_hdr10
@@ -162,10 +178,12 @@ automation:
                  else states('input_number.lip_sync_default')) | int }}
       current: "{{ state_attr(sensor, 'delay') }}"
     conditions:
+      - condition: state
+        entity_id: input_boolean.lip_sync_enabled
+        state: "on"
       - "{{ input is string and current is number }}"
-      # With no video on the watched input there's no format to match, so
-      # leave its delay alone.
-      - "{{ not watched or video_format not in ['none', 'unknown', 'unavailable'] }}"
+      # The receiver ignores delay changes while no video is coming in.
+      - "{{ video_format not in ['none', 'unknown', 'unavailable'] }}"
       - "{{ target != current }}"
     actions:
       - action: shell_command.denon_lip_sync_set

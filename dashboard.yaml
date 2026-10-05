@@ -20,12 +20,22 @@ views:
         cards:
           - type: heading
             heading: Now playing
+          - type: tile
+            entity: input_boolean.lip_sync_enabled
+            name: Automatic lip sync
+            features_position: inline
+            features:
+              - type: toggle
           - type: markdown
             content: >-
               {% set s = 'sensor.denon_lip_sync_format' %}
               {% set f = states(s) %}
               {% if state_attr(s, 'error') %}
               Can't reach the receiver: {{ state_attr(s, 'error') }}
+              {% elif is_state('input_boolean.lip_sync_enabled', 'off') %}
+              Automatic lip sync is off. The receiver keeps whatever delay you
+              set (now {{ state_attr(s, 'delay') }} ms on input
+              {{ state_attr(s, 'input') }}).
               {% elif state_attr(s, 'input') != state_attr(s, 'watched_input') %}
               Input {{ state_attr(s, 'input') or 'unknown' }} is selected. Only
               {{ state_attr(s, 'watched_input') }} is tuned; other inputs are held at
