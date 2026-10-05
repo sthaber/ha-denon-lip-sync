@@ -6,25 +6,29 @@
 #
 # Install: see https://github.com/sthaber/ha-denon-lip-sync
 #
-# Two things you may want to edit, both in the automation's `variables:`
-# below:
-#   1. `watched_input` — the receiver's internal name for the input your
-#      source is plugged into (AUX1, MPLAY, GAME, BD, SAT/CBL, ...). This is
-#      not the name you gave it; read `input` off sensor.denon_lip_sync_format
-#      while the source is selected.
-#   2. `receiver` — your Denon's media_player entity from the denonavr
-#      integration.
+# One thing to edit: the input your source is plugged into, at the end of
+# the sensor's `command:` below (AUX1). Use the receiver's internal name
+# (AUX1, MPLAY, GAME, BD, SAT/CBL, ...), not the name you gave it: select
+# the input and read `input` off sensor.denon_lip_sync_format.
+#
+# Every other input is held at 0 ms.
+
+# Writes go through denon.py rather than the denonavr integration, so the
+# script can check which input is selected immediately before sending.
+shell_command:
+  denon_lip_sync_set: 'python3 /config/ha-denon-lip-sync/denon.py set {{ input }} {{ delay }}'
 
 command_line:
   - sensor:
       name: Denon Lip Sync Format
       unique_id: denon_lip_sync_format
-      command: 'python3 /config/ha-denon-lip-sync/denon.py'
+      command: 'python3 /config/ha-denon-lip-sync/denon.py AUX1'
       command_timeout: 3
       scan_interval: 3
       value_template: "{{ value_json.format | default('unknown') }}"
       json_attributes:
         - input
+        - watched_input
         - resolution
         - frame_rate
         - hdr
@@ -119,10 +123,10 @@ input_number:
 
 automation:
   - id: denon_lip_sync_apply
-    alias: Denon lip sync - apply delay for current video format
+    alias: Denon lip sync - keep the audio delay matched to the video
     description: >-
-      Sets the receiver's audio delay from the matching Lip Sync setting
-      whenever the video format, the selected input, or a setting changes.
+      Keeps the selected input's audio delay where it should be: the matching
+      Lip Sync setting on the watched input, 0 ms on every other input.
     mode: queued
     max: 3
     triggers:
@@ -131,6 +135,9 @@ automation:
       - trigger: state
         entity_id: sensor.denon_lip_sync_format
         attribute: input
+      - trigger: state
+        entity_id: sensor.denon_lip_sync_format
+        attribute: delay
       - trigger: state
         entity_id:
           - input_number.lip_sync_24_sdr
@@ -144,26 +151,27 @@ automation:
           - input_number.lip_sync_60_dolby_vision
           - input_number.lip_sync_default
     variables:
-      watched_input: AUX1
-      receiver: media_player.denon_avr_x1700h_2
-      video_format: "{{ states('sensor.denon_lip_sync_format') }}"
+      sensor: sensor.denon_lip_sync_format
+      input: "{{ state_attr(sensor, 'input') }}"
+      watched: "{{ input == state_attr(sensor, 'watched_input') }}"
+      video_format: "{{ states(sensor) }}"
       setting: "input_number.lip_sync_{{ video_format }}"
       target: >-
-        {{ (states(setting) if has_value(setting)
-            else states('input_number.lip_sync_default')) | int }}
-      current: "{{ state_attr('sensor.denon_lip_sync_format', 'delay') }}"
+        {{ 0 if not watched
+           else (states(setting) if has_value(setting)
+                 else states('input_number.lip_sync_default')) | int }}
+      current: "{{ state_attr(sensor, 'delay') }}"
     conditions:
-      # The delay command changes whichever input is selected, so only act
-      # while the watched one is.
-      - "{{ state_attr('sensor.denon_lip_sync_format', 'input') == watched_input }}"
-      - "{{ video_format not in ['none', 'unknown', 'unavailable'] }}"
-      - "{{ current is number and target != current }}"
+      - "{{ input is string and current is number }}"
+      # With no video on the watched input there's no format to match, so
+      # leave its delay alone.
+      - "{{ not watched or video_format not in ['none', 'unknown', 'unavailable'] }}"
+      - "{{ target != current }}"
     actions:
-      - action: denonavr.get_command
-        target:
-          entity_id: "{{ receiver }}"
+      - action: shell_command.denon_lip_sync_set
         data:
-          command: "/goform/formiPhoneAppDirect.xml?PSDELAY%20{{ '%03d' % target }}"
+          input: "{{ input }}"
+          delay: "{{ target }}"
       - action: homeassistant.update_entity
         target:
           entity_id: sensor.denon_lip_sync_format

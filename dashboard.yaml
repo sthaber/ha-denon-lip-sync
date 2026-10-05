@@ -26,8 +26,12 @@ views:
               {% set f = states(s) %}
               {% if state_attr(s, 'error') %}
               Can't reach the receiver: {{ state_attr(s, 'error') }}
+              {% elif state_attr(s, 'input') != state_attr(s, 'watched_input') %}
+              Input {{ state_attr(s, 'input') or 'unknown' }} is selected. Only
+              {{ state_attr(s, 'watched_input') }} is tuned; other inputs are held at
+              0 ms (now {{ state_attr(s, 'delay') }} ms).
               {% elif f in ['none', 'unknown', 'unavailable'] %}
-              No video on input {{ state_attr(s, 'input') or 'unknown' }}.
+              No video on input {{ state_attr(s, 'input') }}.
               {% else %}
               {% set setting = 'input_number.lip_sync_' ~ f %}
               **{{ state_attr(s, 'resolution') }} {{ state_attr(s, 'frame_rate') }} Hz

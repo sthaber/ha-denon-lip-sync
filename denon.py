@@ -1,16 +1,24 @@
-"""Print what a Denon receiver is playing as JSON, for Home Assistant to poll.
+"""Read a Denon receiver's video format and set its audio delay.
 
 Usage:
-    denon.py
+    denon.py WATCHED_INPUT          print what the receiver is playing as JSON
+    denon.py set INPUT DELAY        set the audio delay, only if INPUT is selected
 
-Output fields:
-    input       the selected input, as the receiver names it internally (AUX1)
-    resolution  incoming video resolution (4K, 1080p, ...)
-    frame_rate  incoming frame rate in whole numbers (23.976 reads as 24)
-    hdr         sdr, hdr10, dolby_vision, or the receiver's own label lowercased
-    format      frame rate and HDR joined, e.g. 24_hdr10; "none" with no video
-    delay       the selected input's audio delay in ms
-    error       set instead of the above if the receiver couldn't be reached
+Output fields when reading:
+    input          the selected input, by the receiver's internal name (AUX1)
+    watched_input  WATCHED_INPUT, passed through so HA has it in one place
+    resolution     incoming video resolution (4K, 1080p, ...)
+    frame_rate     incoming frame rate in whole numbers (23.976 reads as 24)
+    hdr            sdr, hdr10, dolby_vision, or the receiver's own label lowercased
+    format         frame rate and HDR joined, e.g. 24_hdr10; "none" with no video
+    delay          the selected input's audio delay in ms
+    error          set instead of the above if the receiver couldn't be reached
+
+The receiver's delay command changes whichever input is selected; there's
+no way to aim it at one input. So `set` asks which input is selected and
+sends the delay over the same connection a moment later, and does nothing
+if the input has changed since HA decided what to send. HA will see the
+new input on its next poll and decide again.
 
 The receiver's address comes from the denonavr config entry in HA storage,
 so nothing here needs editing.
@@ -26,6 +34,7 @@ from __future__ import annotations
 import json
 import re
 import socket
+import sys
 import time
 from pathlib import Path
 
@@ -33,10 +42,14 @@ CONFIG_ENTRIES = Path("/config/.storage/core.config_entries")
 PORT = 23
 TIMEOUT = 2.0
 
-QUERIES = ("SI?", "SSINFSIGRES ?", "SSINFSIGHDR ?", "PSDELAY ?")
-
 # The receiver's HDR labels, mapped to the names used in helper entity ids.
 HDR_NAMES = {"---": "sdr", "HDR10": "hdr10", "Dolby Vision": "dolby_vision"}
+
+# Receiver input names, e.g. AUX1, SAT/CBL. Arguments end up in a command
+# line, so keep them to plain tokens.
+INPUT_NAME = re.compile(r"^[A-Za-z0-9/._-]+$")
+
+MAX_DELAY = 500  # ms; the receiver ignores anything higher
 
 
 def receiver_host() -> str:
@@ -47,36 +60,51 @@ def receiver_host() -> str:
     raise RuntimeError("no denonavr config entry")
 
 
-def query(host: str) -> dict[str, str]:
-    """Send the queries and collect the first answer to each, keyed by prefix."""
-    wanted = {"SI": None, "SSINFSIGRES I": None, "SSINFSIGHDR I": None, "PSDELAY ": None}
-    with socket.create_connection((host, PORT), timeout=TIMEOUT) as sock:
-        sock.sendall("".join(q + "\r" for q in QUERIES).encode())
+class Receiver:
+    def __init__(self, host: str) -> None:
+        self.sock = socket.create_connection((host, PORT), timeout=TIMEOUT)
+        self.buf = ""
+
+    def close(self) -> None:
+        self.sock.close()
+
+    def ask(self, commands: list[str], prefixes: list[str]) -> dict[str, str]:
+        """Send commands and return the first answer starting with each prefix."""
+        answers: dict[str, str | None] = dict.fromkeys(prefixes)
+        self.sock.sendall("".join(c + "\r" for c in commands).encode())
         deadline = time.monotonic() + TIMEOUT
-        buf = ""
-        while None in wanted.values() and time.monotonic() < deadline:
-            sock.settimeout(max(deadline - time.monotonic(), 0.05))
+        while None in answers.values() and time.monotonic() < deadline:
+            self.sock.settimeout(max(deadline - time.monotonic(), 0.05))
             try:
-                chunk = sock.recv(4096)
+                chunk = self.sock.recv(4096)
             except socket.timeout:
                 break
             if not chunk:
                 break
-            buf += chunk.decode(errors="replace")
-            *lines, buf = buf.split("\r")
+            self.buf += chunk.decode(errors="replace")
+            *lines, self.buf = self.buf.split("\r")
             for line in lines:
                 line = line.strip()
-                for prefix in wanted:
-                    if wanted[prefix] is None and line.startswith(prefix):
-                        wanted[prefix] = line[len(prefix):].strip()
-    missing = [p.strip() for p, v in wanted.items() if v is None]
-    if missing:
-        raise TimeoutError(f"no answer for {', '.join(missing)}")
-    return wanted
+                for prefix in answers:
+                    if answers[prefix] is None and line.startswith(prefix):
+                        answers[prefix] = line[len(prefix):].strip()
+        missing = [p.strip() for p, v in answers.items() if v is None]
+        if missing:
+            raise TimeoutError(f"no answer for {', '.join(missing)}")
+        return answers  # type: ignore[return-value]
 
 
-def parse(answers: dict[str, str]) -> dict[str, object]:
-    out: dict[str, object] = {"input": answers["SI"]}
+def read_state(watched_input: str) -> dict[str, object]:
+    receiver = Receiver(receiver_host())
+    try:
+        answers = receiver.ask(
+            ["SI?", "SSINFSIGRES ?", "SSINFSIGHDR ?", "PSDELAY ?"],
+            ["SI", "SSINFSIGRES I", "SSINFSIGHDR I", "PSDELAY "],
+        )
+    finally:
+        receiver.close()
+
+    out: dict[str, object] = {"input": answers["SI"], "watched_input": watched_input}
 
     # "4K24", "1080p60"; "---" when there's no video.
     match = re.fullmatch(r"(.*?)(\d+)", answers["SSINFSIGRES I"])
@@ -93,13 +121,44 @@ def parse(answers: dict[str, str]) -> dict[str, object]:
     return out
 
 
-def main() -> None:
+def set_delay(expected_input: str, delay: int) -> str:
+    receiver = Receiver(receiver_host())
     try:
-        out = parse(query(receiver_host()))
-    except Exception as err:
-        out = {"error": f"{type(err).__name__}: {err}"}
-    print(json.dumps(out))
+        selected = receiver.ask(["SI?"], ["SI"])["SI"]
+        if selected != expected_input:
+            return f"skipped: input is {selected}, not {expected_input}"
+        receiver.ask([f"PSDELAY {delay:03d}"], ["PSDELAY "])
+        return f"set {expected_input} to {delay} ms"
+    finally:
+        receiver.close()
+
+
+def main() -> int:
+    args = sys.argv[1:]
+
+    if len(args) == 1 and INPUT_NAME.match(args[0]):
+        try:
+            out = read_state(args[0])
+        except Exception as err:
+            out = {"error": f"{type(err).__name__}: {err}"}
+        print(json.dumps(out))
+        return 0
+
+    if len(args) == 3 and args[0] == "set" and INPUT_NAME.match(args[1]) and args[2].isdigit():
+        delay = int(args[2])
+        if delay > MAX_DELAY:
+            print(f"delay {delay} is over {MAX_DELAY} ms", file=sys.stderr)
+            return 2
+        try:
+            print(set_delay(args[1], delay))
+        except Exception as err:
+            print(f"{type(err).__name__}: {err}", file=sys.stderr)
+            return 1
+        return 0
+
+    print(__doc__, file=sys.stderr)
+    return 2
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
